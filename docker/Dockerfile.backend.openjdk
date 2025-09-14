@@ -1,5 +1,8 @@
+# Backend Dockerfile for CMLRE Marine Platform
+# This Dockerfile uses official OpenJDK images
+
 # Multi-stage build for Spring Boot application
-FROM eclipse-temurin:17-jdk-alpine AS build
+FROM openjdk:17-jdk-alpine AS build
 
 # Install Maven
 RUN apk add --no-cache maven
@@ -8,17 +11,17 @@ RUN apk add --no-cache maven
 WORKDIR /app
 
 # Copy pom.xml and download dependencies
-COPY pom.xml .
+COPY ../backend/pom.xml .
 RUN mvn dependency:go-offline -B
 
 # Copy source code
-COPY src ./src
+COPY ../backend/src ./src
 
 # Build the application
 RUN mvn clean package -DskipTests
 
 # Runtime stage - Use JRE for smaller image
-FROM eclipse-temurin:17-jre-alpine
+FROM openjdk:17-jre-alpine
 
 # Install necessary packages
 RUN apk add --no-cache curl dumb-init
