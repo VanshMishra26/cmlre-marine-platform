@@ -68,11 +68,13 @@ The platform follows a microservices architecture with the following components:
 - **React Query**: Data fetching and caching
 
 ### Infrastructure
-- **Docker**: Containerization
-- **Docker Compose**: Multi-container orchestration
-- **Nginx**: Reverse proxy and load balancing
-- **Prometheus**: Metrics collection
-- **Grafana**: Monitoring dashboards
+- **Docker**: Containerization with optimized Alpine Linux images
+- **Docker Compose**: Multi-container orchestration with health checks
+- **Nginx**: Reverse proxy, load balancing, and security headers
+- **Eclipse Temurin JDK 17**: Production-ready Java runtime
+- **Prometheus**: Metrics collection and monitoring
+- **Grafana**: Advanced monitoring dashboards
+- **Redis**: High-performance caching and session management
 
 ## 📦 Installation
 
@@ -86,13 +88,18 @@ The platform follows a microservices architecture with the following components:
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/VanshMishra26/cmlre-marine-platform.git
    cd cmlre-marine-platform
    ```
 
 2. **Start all services**
    ```bash
+   # Using docker-compose from the docker folder
+   cd docker
    docker-compose up -d
+   
+   # Or from the root directory
+   docker-compose -f docker/docker-compose.yml up -d
    ```
 
 3. **Access the application**
@@ -101,6 +108,28 @@ The platform follows a microservices architecture with the following components:
    - ML Services: http://localhost:8000
    - API Documentation: http://localhost:8080/swagger-ui.html
    - Monitoring: http://localhost:3001 (Grafana)
+
+### Docker Configuration
+
+The platform includes comprehensive Docker configuration with multiple options:
+
+#### Frontend Dockerfiles
+- **Main Dockerfile**: Located in `docker/Dockerfile` - optimized for production
+- **Alternative versions**: `Dockerfile.frontend` and `Dockerfile.frontend.standalone`
+- **Features**: Nginx, security headers, gzip compression, health checks
+
+#### Backend Dockerfiles  
+- **Main Dockerfile**: Located in `docker/Dockerfile.backend` - uses Eclipse Temurin JDK 17
+- **Alternative**: `Dockerfile.backend.openjdk` - uses official OpenJDK 17
+- **Features**: Alpine Linux, multi-stage builds, security optimizations
+
+#### Docker Compose
+- **Complete stack**: MongoDB, Redis, Backend, ML Services, Frontend, Nginx, Monitoring
+- **Health checks**: Built-in health monitoring for all services
+- **Security**: Non-root users, proper permissions, security headers
+- **Performance**: Optimized images with Alpine Linux base
+
+For detailed Docker setup instructions, see [docker/README.md](docker/README.md).
 
 ### Local Development
 
