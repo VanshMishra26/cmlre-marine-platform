@@ -1,0 +1,159 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: cmlre-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: cmlre_marine_data
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongodb/init:/docker-entrypoint-initdb.d
+    networks:
+      - cmlre-network
+
+  # Redis Cache
+  redis:
+    image: redis:7.2-alpine
+    container_name: cmlre-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cmlre-network
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: cmlre-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/cmlre_marine_data?authSource=admin
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: your_jwt_secret_key_here
+      ML_SERVICES_URL: http://ml-services:8000
+    depends_on:
+      - mongodb
+      - redis
+      - ml-services
+    volumes:
+      - ../uploads:/app/uploads
+    networks:
+      - cmlre-network
+
+  # Python ML Services
+  ml-services:
+    build:
+      context: ../ml-services
+      dockerfile: Dockerfile
+    container_name: cmlre-ml-services
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/cmlre_marine_data?authSource=admin
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MODEL_PATH: /app/models
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ../ml-services/models:/app/models
+      - ../uploads:/app/uploads
+    networks:
+      - cmlre-network
+
+  # React Frontend
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: cmlre-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:8080/api
+      REACT_APP_ML_SERVICES_URL: http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - cmlre-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: cmlre-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - backend
+      - ml-services
+    networks:
+      - cmlre-network
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: cmlre-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    networks:
+      - cmlre-network
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: cmlre-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - cmlre-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  cmlre-network:
+    driver: bridge
